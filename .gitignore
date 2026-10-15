@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+packages/frontend/dist/
+packages/backend/dist/
+packages/shared/dist/
+
+# AWS CDK
+cdk.out/
+cdk.context.json
+packages/infra/cdk.out/
+
+# Environment
+.env
+.env.local
+.env.production
+.env.*.local
+*.env
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.swp
+
+# Testing
+coverage/
+.vitest/
+
+# Misc
+*.pem
+tmp/
+.cache/

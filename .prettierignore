@@ -1,0 +1,6 @@
+ÍÍnode_modules
+dist
+build
+cdk.out
+coverage
+*.log
