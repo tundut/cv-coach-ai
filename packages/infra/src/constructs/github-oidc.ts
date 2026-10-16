@@ -24,23 +24,27 @@ export class GithubOidcConstruct extends Construct {
 
     const { stage, githubRepo } = props;
 
-    // OIDC provider cho GitHub (một provider dùng chung cho cả account).
-    // Nếu account đã có provider này, dùng fromOpenIdConnectProviderArn thay vì tạo mới.
+    // OIDC provider cho GitHub — do stack này tạo và quản lý.
     const provider = new iam.OpenIdConnectProvider(this, 'GithubProvider', {
       url: 'https://token.actions.githubusercontent.com',
       clientIds: ['sts.amazonaws.com'],
     });
 
-    // Role GitHub Actions assume. Trust chỉ cho push từ repo này.
+    // Role GitHub Actions assume. Trust theo repo này.
+    //
+    // Lưu ý: repo có thể đã bật "immutable unique IDs" của GitHub, khiến sub
+    // có dạng "repo:owner@<ownerId>/repo@<repoId>:ref:..." thay vì
+    // "repo:owner/repo:...". Pattern dưới dùng wildcard giữa owner và repo
+    // để khớp cả hai dạng mà vẫn giới hạn đúng owner + repo name.
+    const [owner, repo] = githubRepo.split('/');
     this.deployRole = new iam.Role(this, 'DeployRole', {
       roleName: `cv-coach-github-deploy-${stage}`,
       assumedBy: new iam.OpenIdConnectPrincipal(provider, {
-        StringLike: {
-          // Giới hạn theo repo (mọi branch). Siết chặt hơn bằng :ref:refs/heads/main nếu muốn.
-          'token.actions.githubusercontent.com:sub': `repo:${githubRepo}:*`,
-        },
         StringEquals: {
           'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
+        },
+        StringLike: {
+          'token.actions.githubusercontent.com:sub': `repo:${owner}*/${repo}*:*`,
         },
       }),
       description: `GitHub Actions deploy role for ${githubRepo} (${stage})`,
