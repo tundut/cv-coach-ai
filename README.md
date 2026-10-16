@@ -117,6 +117,38 @@ npm run deploy -- --context stage=dev
 
 > **MVP hoàn thành.** Toàn bộ 8 giai đoạn đã triển khai và kiểm thử end-to-end trên AWS.
 
+## CI/CD (GitHub Actions)
+
+Hai workflow trong `.github/workflows/`:
+
+- **`ci.yml`** — chạy mỗi push/PR: `npm ci` → build shared → typecheck → test → build. Không cần AWS credentials.
+- **`deploy.yml`** — chạy khi push `main` (hoặc chạy tay): build + test → deploy backend (CDK) → deploy frontend (S3/CloudFront). Dùng **GitHub OIDC** để lấy quyền AWS tạm thời, không lưu access key.
+
+### Thiết lập một lần
+
+1. **Deploy IAM role cho GitHub Actions** (tạo OIDC provider + role, trust đúng repo):
+
+   ```bash
+   cd packages/infra
+   npx cdk deploy --context stage=dev \
+     --context aiProvider=openai --context textractEnabled=true \
+     --context githubRepo=<owner>/<repo> \
+     --require-approval never
+   ```
+
+   Lấy output `GithubDeployRoleArn`.
+
+2. **Thêm GitHub secret** trong repo (Settings → Secrets and variables → Actions):
+   - `AWS_DEPLOY_ROLE_ARN` = giá trị `GithubDeployRoleArn` ở trên
+
+3. **Đặt OpenAI key vào Secrets Manager** (nếu dùng OpenAI) — CI/CD không chứa key:
+   ```bash
+   aws secretsmanager put-secret-value \
+     --secret-id cv-coach-openai-dev --secret-string "sk-..."
+   ```
+
+Sau đó mỗi lần push `main` → GitHub Actions tự build, test, và deploy toàn bộ.
+
 ## Bảo mật
 
 - S3 bucket private, chỉ dùng presigned URL ngắn hạn

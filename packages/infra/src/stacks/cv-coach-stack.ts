@@ -6,6 +6,7 @@ import { StorageConstruct } from '../constructs/storage.js';
 import { DatabaseConstruct } from '../constructs/database.js';
 import { ProcessingConstruct } from '../constructs/processing.js';
 import { HostingConstruct } from '../constructs/hosting.js';
+import { GithubOidcConstruct } from '../constructs/github-oidc.js';
 
 interface CvCoachStackProps extends cdk.StackProps {
   stage: string;
@@ -70,6 +71,13 @@ export class CvCoachStack extends cdk.Stack {
     // ─── Frontend hosting (S3 + CloudFront) ─────────
     const hosting = new HostingConstruct(this, 'Hosting', { stage });
 
+    // ─── GitHub Actions OIDC (chỉ tạo khi có --context githubRepo=owner/repo) ───
+    const githubRepo = this.node.tryGetContext('githubRepo') as string | undefined;
+    let githubOidc: GithubOidcConstruct | undefined;
+    if (githubRepo) {
+      githubOidc = new GithubOidcConstruct(this, 'GithubOidc', { stage, githubRepo });
+    }
+
     // ─── Outputs ────────────────────────────────────
     new cdk.CfnOutput(this, 'ApiUrl', {
       value: api.restApi.url,
@@ -130,5 +138,13 @@ export class CvCoachStack extends cdk.Stack {
       description: 'CloudFront distribution ID (for cache invalidation)',
       exportName: `${id}-DistributionId`,
     });
+
+    if (githubOidc) {
+      new cdk.CfnOutput(this, 'GithubDeployRoleArn', {
+        value: githubOidc.deployRole.roleArn,
+        description: 'IAM role ARN cho GitHub Actions (OIDC) — đặt vào GitHub secret AWS_DEPLOY_ROLE_ARN',
+        exportName: `${id}-GithubDeployRoleArn`,
+      });
+    }
   }
 }
