@@ -49,12 +49,17 @@ jobs:
       - name: Build backend (Lambda bundles)
         run: npm run build --workspace @cv-coach/backend
 
-      - name: Debug OIDC context
+      - name: Debug OIDC token subject
         run: |
           echo "Repository: ${{ github.repository }}"
           echo "Ref: ${{ github.ref }}"
           echo "Event: ${{ github.event_name }}"
           echo "Role ARN set: ${{ secrets.AWS_DEPLOY_ROLE_ARN != '' }}"
+          echo "--- OIDC token sub ---"
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+          # Giải mã payload (phần giữa của JWT) để xem sub + aud
+          echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | jq '{sub, aud, repository}' || echo "decode failed"
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
